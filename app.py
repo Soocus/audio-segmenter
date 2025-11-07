@@ -13,6 +13,7 @@ from datetime import datetime
 import re
 import time
 import requests
+import base64
 
 app = Flask(__name__)
 CORS(app)  # Enable CORS for all routes
@@ -1025,32 +1026,35 @@ def kling_lipsync():
         
         print(f"Files saved: video={video_file_path}, audio={audio_file_path}")
         
-        # Submit lip sync job to Kling AI with files directly
+        # Read and encode files as base64
+        print("Encoding video file...")
+        with open(video_file_path, 'rb') as f:
+            video_base64 = base64.b64encode(f.read()).decode('utf-8')
+        
+        print("Encoding audio file...")
+        with open(audio_file_path, 'rb') as f:
+            audio_base64 = base64.b64encode(f.read()).decode('utf-8')
+        
+        # Submit lip sync job to Kling AI
         kling_api_url = "https://api.klingai.com/v1/videos/video-to-lip"
         
         headers = {
-            "Authorization": f"Bearer {access_key}:{secret_key}"
+            "Authorization": f"Bearer {access_key}:{secret_key}",
+            "Content-Type": "application/json"
         }
         
-        # Prepare multipart form data with files
-        files = {
-            'video': ('video' + os.path.splitext(video_file_path)[1], open(video_file_path, 'rb'), 'video/*'),
-            'audio': ('audio' + os.path.splitext(audio_file_path)[1], open(audio_file_path, 'rb'), 'audio/*')
-        }
-        
-        data = {
+        # Prepare JSON payload with base64-encoded files
+        payload = {
             "model_name": "kling-v1",
-            "cfg_scale": "0.5",
+            "video_file": video_base64,
+            "audio_file": audio_base64,
+            "cfg_scale": 0.5,
             "mode": "std"
         }
         
-        print(f"Submitting to Kling API with files...")
+        print(f"Submitting to Kling API (video: {len(video_base64)} chars, audio: {len(audio_base64)} chars)...")
         
-        response = requests.post(kling_api_url, headers=headers, files=files, data=data, timeout=120)
-        
-        # Close file handles
-        for f in files.values():
-            f[1].close()
+        response = requests.post(kling_api_url, headers=headers, json=payload, timeout=120)
         
         if response.status_code != 200:
             error_msg = f"Kling API error: {response.status_code} - {response.text}"
