@@ -824,7 +824,7 @@
             formData.append('kling_secret_key', document.getElementById('klingSecretKey').value);
 
             try {
-                updateLipsyncProgress(10, 'Uploading files to server... (this may take a few minutes for large files)');
+                updateLipsyncProgress(10, 'Uploading to Kling AI... (this may take a few minutes for large files)');
 
                 // Disable timeout on fetch for large file uploads
                 const controller = new AbortController();
@@ -838,7 +838,7 @@
                 
                 clearTimeout(timeoutId);
 
-                updateLipsyncProgress(30, 'Submitting to Kling AI...');
+                updateLipsyncProgress(50, 'Processing with Kling AI...');
 
                 const data = await response.json();
 
@@ -851,7 +851,7 @@
                 const klingAccessKey = document.getElementById('klingAccessKey').value;
                 const klingSecretKey = document.getElementById('klingSecretKey').value;
                 let completed = false;
-                let progress = 30;
+                let progress = 50;
 
                 while (!completed) {
                     await new Promise(resolve => setTimeout(resolve, 5000)); // Poll every 5 seconds

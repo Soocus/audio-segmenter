@@ -13,7 +13,6 @@ from datetime import datetime
 import re
 import time
 import requests
-import base64
 
 app = Flask(__name__)
 CORS(app)  # Enable CORS for all routes
@@ -1026,31 +1025,32 @@ def kling_lipsync():
         
         print(f"Files saved: video={video_file_path}, audio={audio_file_path}")
         
-        # Upload files and get Kling URLs
-        video_url = upload_to_kling(video_file_path, access_key, secret_key)
-        audio_url = upload_to_kling(audio_file_path, access_key, secret_key)
-        
-        print(f"Files uploaded to Kling: video={video_url}, audio={audio_url}")
-        
-        # Submit lip sync job to Kling AI
+        # Submit lip sync job to Kling AI with files directly
         kling_api_url = "https://api.klingai.com/v1/videos/video-to-lip"
         
         headers = {
-            "Authorization": f"Bearer {access_key}:{secret_key}",
-            "Content-Type": "application/json"
+            "Authorization": f"Bearer {access_key}:{secret_key}"
         }
         
-        payload = {
+        # Prepare multipart form data with files
+        files = {
+            'video': ('video' + os.path.splitext(video_file_path)[1], open(video_file_path, 'rb'), 'video/*'),
+            'audio': ('audio' + os.path.splitext(audio_file_path)[1], open(audio_file_path, 'rb'), 'audio/*')
+        }
+        
+        data = {
             "model_name": "kling-v1",
-            "video_url": video_url,
-            "audio_url": audio_url,
-            "cfg_scale": 0.5,
+            "cfg_scale": "0.5",
             "mode": "std"
         }
         
-        print(f"Submitting to Kling API: {payload}")
+        print(f"Submitting to Kling API with files...")
         
-        response = requests.post(kling_api_url, headers=headers, json=payload, timeout=60)
+        response = requests.post(kling_api_url, headers=headers, files=files, data=data, timeout=120)
+        
+        # Close file handles
+        for f in files.values():
+            f[1].close()
         
         if response.status_code != 200:
             error_msg = f"Kling API error: {response.status_code} - {response.text}"
@@ -1058,6 +1058,7 @@ def kling_lipsync():
             return jsonify({'error': error_msg}), 500
         
         result = response.json()
+        print(f"Kling API response: {result}")
         
         if result.get('code') != 0:
             error_msg = f"Kling API error: {result.get('message', 'Unknown error')}"
@@ -1159,50 +1160,6 @@ def kling_status(task_id):
     
     except Exception as e:
         return jsonify({'error': str(e)}), 500
-
-def upload_to_kling(file_path, access_key, secret_key):
-    """Upload file to Kling and get URL"""
-    # Check file size
-    file_size_mb = os.path.getsize(file_path) / (1024 * 1024)
-    print(f"Uploading file: {file_path} ({file_size_mb:.2f} MB)")
-    
-    # Set timeout based on file size (at least 2 minutes for large files)
-    timeout = max(120, int(file_size_mb * 10))  # 10 seconds per MB, minimum 2 minutes
-    print(f"Upload timeout set to: {timeout} seconds")
-    
-    # Read file and convert to base64
-    with open(file_path, 'rb') as f:
-        file_content = f.read()
-    
-    print("Converting to base64...")
-    file_base64 = base64.b64encode(file_content).decode('utf-8')
-    file_extension = os.path.splitext(file_path)[1][1:]  # Remove the dot
-    
-    # Upload to Kling
-    upload_url = "https://api.klingai.com/v1/files/upload"
-    
-    headers = {
-        "Authorization": f"Bearer {access_key}:{secret_key}",
-        "Content-Type": "application/json"
-    }
-    
-    payload = {
-        "file_content": file_base64,
-        "file_extension": file_extension
-    }
-    
-    print(f"Uploading to Kling API... (timeout: {timeout}s)")
-    response = requests.post(upload_url, headers=headers, json=payload, timeout=timeout)
-    
-    if response.status_code != 200:
-        raise Exception(f"Failed to upload file: {response.status_code} - {response.text}")
-    
-    result = response.json()
-    
-    if result.get('code') != 0:
-        raise Exception(f"Upload error: {result.get('message', 'Unknown error')}")
-    
-    return result['data']['url']
 
 
 if __name__ == '__main__':
