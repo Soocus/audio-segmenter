@@ -1043,22 +1043,43 @@ def kling_lipsync():
             "Content-Type": "application/json"
         }
         
-        # Prepare JSON payload with base64-encoded files
+        # Get file extensions
+        video_ext = os.path.splitext(video_file_path)[1][1:]  # Remove the dot
+        audio_ext = os.path.splitext(audio_file_path)[1][1:]  # Remove the dot
+        
+        # Prepare JSON payload according to Kling API docs
         payload = {
             "model_name": "kling-v1",
-            "video_file": video_base64,
-            "audio_file": audio_base64,
-            "cfg_scale": 0.5,
-            "mode": "std"
+            "video": video_base64,
+            "audio": audio_base64,
+            "video_type": video_ext,
+            "audio_type": audio_ext,
+            "cfg_scale": 0.5
         }
         
-        print(f"Submitting to Kling API (video: {len(video_base64)} chars, audio: {len(audio_base64)} chars)...")
+        print(f"Submitting to Kling API...")
+        print(f"- Video: {len(video_base64)} chars ({video_ext})")
+        print(f"- Audio: {len(audio_base64)} chars ({audio_ext})")
+        print(f"- Payload keys: {list(payload.keys())}")
         
-        response = requests.post(kling_api_url, headers=headers, json=payload, timeout=120)
+        response = requests.post(kling_api_url, headers=headers, json=payload, timeout=180)
+        
+        print(f"Response status: {response.status_code}")
+        print(f"Response headers: {dict(response.headers)}")
+        print(f"Response body: {response.text[:500]}")  # First 500 chars
         
         if response.status_code != 200:
             error_msg = f"Kling API error: {response.status_code} - {response.text}"
             print(error_msg)
+            
+            # Try to parse error details
+            try:
+                error_data = response.json()
+                if error_data.get('message'):
+                    error_msg = f"Kling API error ({error_data.get('code')}): {error_data.get('message')}"
+            except:
+                pass
+            
             return jsonify({'error': error_msg}), 500
         
         result = response.json()
