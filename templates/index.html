@@ -442,7 +442,7 @@
                         <input type="file" id="videoFile" name="video" accept="video/*" required>
                         <div class="file-upload-icon">🎬</div>
                         <div class="file-upload-text">Click or drag video file here</div>
-                        <div class="file-upload-hint">Supports: MP4, MOV, AVI (max 100MB)</div>
+                        <div class="file-upload-hint">Supports: MP4, MOV, AVI (Recommended: under 50MB for faster upload)</div>
                     </div>
                     <div class="file-info" id="videoInfo"></div>
                 </div>
@@ -453,7 +453,7 @@
                         <input type="file" id="lipsyncAudioFile" name="audio" accept="audio/*" required>
                         <div class="file-upload-icon">🎤</div>
                         <div class="file-upload-text">Click or drag audio file here</div>
-                        <div class="file-upload-hint">Supports: MP3, WAV, OGG (max 20MB)</div>
+                        <div class="file-upload-hint">Supports: MP3, WAV, OGG (Recommended: under 10MB)</div>
                     </div>
                     <div class="file-info" id="lipsyncAudioInfo"></div>
                 </div>
@@ -775,13 +775,25 @@
 
         function updateVideoInfo(file) {
             const sizeMB = (file.size / (1024 * 1024)).toFixed(2);
-            videoInfo.textContent = `🎬 ${file.name} (${sizeMB} MB)`;
+            let text = `🎬 ${file.name} (${sizeMB} MB)`;
+            
+            if (sizeMB > 50) {
+                text += ' ⚠️ Large file - upload may take several minutes';
+            }
+            
+            videoInfo.textContent = text;
             videoInfo.classList.add('show');
         }
 
         function updateLipsyncAudioInfo(file) {
             const sizeMB = (file.size / (1024 * 1024)).toFixed(2);
-            lipsyncAudioInfo.textContent = `🎤 ${file.name} (${sizeMB} MB)`;
+            let text = `🎤 ${file.name} (${sizeMB} MB)`;
+            
+            if (sizeMB > 10) {
+                text += ' ⚠️ Large file - upload may take longer';
+            }
+            
+            lipsyncAudioInfo.textContent = text;
             lipsyncAudioInfo.classList.add('show');
         }
 
@@ -812,12 +824,19 @@
             formData.append('kling_secret_key', document.getElementById('klingSecretKey').value);
 
             try {
-                updateLipsyncProgress(10, 'Uploading files to server...');
+                updateLipsyncProgress(10, 'Uploading files to server... (this may take a few minutes for large files)');
 
+                // Disable timeout on fetch for large file uploads
+                const controller = new AbortController();
+                const timeoutId = setTimeout(() => controller.abort(), 600000); // 10 minute timeout
+                
                 const response = await fetch('/api/kling-lipsync', {
                     method: 'POST',
-                    body: formData
+                    body: formData,
+                    signal: controller.signal
                 });
+                
+                clearTimeout(timeoutId);
 
                 updateLipsyncProgress(30, 'Submitting to Kling AI...');
 
@@ -860,7 +879,19 @@
 
             } catch (error) {
                 console.error('Error:', error);
-                showLipsyncError(error.message || 'An error occurred during lip sync processing');
+                
+                let errorMessage = error.message || 'An error occurred during lip sync processing';
+                
+                // Provide helpful messages for common errors
+                if (error.name === 'AbortError') {
+                    errorMessage = 'Upload timed out. Your files may be too large. Try using smaller files (video <50MB, audio <10MB) or compress them first.';
+                } else if (errorMessage.includes('timeout') || errorMessage.includes('timed out')) {
+                    errorMessage = 'Upload timed out. Please try with smaller files or check your internet connection.';
+                } else if (errorMessage.includes('Network') || errorMessage.includes('Failed to fetch')) {
+                    errorMessage = 'Network error. Please check your internet connection and try again.';
+                }
+                
+                showLipsyncError(errorMessage);
                 lipsyncProgressContainer.classList.remove('show');
             } finally {
                 lipsyncBtn.disabled = false;

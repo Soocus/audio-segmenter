@@ -21,6 +21,10 @@ app.config['MAX_CONTENT_LENGTH'] = 500 * 1024 * 1024  # 500MB max file size
 app.config['UPLOAD_FOLDER'] = tempfile.mkdtemp()
 app.config['SEND_FILE_MAX_AGE_DEFAULT'] = 0  # Disable caching for development
 
+# Increase request timeouts for large file uploads
+import socket
+socket.setdefaulttimeout(300)  # 5 minutes default timeout
+
 # Increase timeouts for long-running requests
 import signal
 signal.signal(signal.SIGALRM, lambda *args: None)  # Prevent timeouts
@@ -1046,7 +1050,7 @@ def kling_lipsync():
         
         print(f"Submitting to Kling API: {payload}")
         
-        response = requests.post(kling_api_url, headers=headers, json=payload, timeout=30)
+        response = requests.post(kling_api_url, headers=headers, json=payload, timeout=60)
         
         if response.status_code != 200:
             error_msg = f"Kling API error: {response.status_code} - {response.text}"
@@ -1158,10 +1162,19 @@ def kling_status(task_id):
 
 def upload_to_kling(file_path, access_key, secret_key):
     """Upload file to Kling and get URL"""
+    # Check file size
+    file_size_mb = os.path.getsize(file_path) / (1024 * 1024)
+    print(f"Uploading file: {file_path} ({file_size_mb:.2f} MB)")
+    
+    # Set timeout based on file size (at least 2 minutes for large files)
+    timeout = max(120, int(file_size_mb * 10))  # 10 seconds per MB, minimum 2 minutes
+    print(f"Upload timeout set to: {timeout} seconds")
+    
     # Read file and convert to base64
     with open(file_path, 'rb') as f:
         file_content = f.read()
     
+    print("Converting to base64...")
     file_base64 = base64.b64encode(file_content).decode('utf-8')
     file_extension = os.path.splitext(file_path)[1][1:]  # Remove the dot
     
@@ -1178,7 +1191,8 @@ def upload_to_kling(file_path, access_key, secret_key):
         "file_extension": file_extension
     }
     
-    response = requests.post(upload_url, headers=headers, json=payload, timeout=60)
+    print(f"Uploading to Kling API... (timeout: {timeout}s)")
+    response = requests.post(upload_url, headers=headers, json=payload, timeout=timeout)
     
     if response.status_code != 200:
         raise Exception(f"Failed to upload file: {response.status_code} - {response.text}")
