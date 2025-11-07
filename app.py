@@ -1004,10 +1004,11 @@ def kling_lipsync():
         if video_file.filename == '' or audio_file.filename == '':
             return jsonify({'error': 'No files selected'}), 400
         
-        # Get API key
-        api_key = request.form.get('kling_api_key')
-        if not api_key:
-            return jsonify({'error': 'Kling API key is required'}), 400
+        # Get API keys
+        access_key = request.form.get('kling_access_key')
+        secret_key = request.form.get('kling_secret_key')
+        if not access_key or not secret_key:
+            return jsonify({'error': 'Both Kling Access Key and Secret Key are required'}), 400
         
         # Save files temporarily
         video_filename = secure_filename(video_file.filename)
@@ -1022,8 +1023,8 @@ def kling_lipsync():
         print(f"Files saved: video={video_file_path}, audio={audio_file_path}")
         
         # Upload files and get Kling URLs
-        video_url = upload_to_kling(video_file_path, api_key)
-        audio_url = upload_to_kling(audio_file_path, api_key)
+        video_url = upload_to_kling(video_file_path, access_key, secret_key)
+        audio_url = upload_to_kling(audio_file_path, access_key, secret_key)
         
         print(f"Files uploaded to Kling: video={video_url}, audio={audio_url}")
         
@@ -1031,7 +1032,7 @@ def kling_lipsync():
         kling_api_url = "https://api.klingai.com/v1/videos/video-to-lip"
         
         headers = {
-            "Authorization": f"Bearer {api_key}",
+            "Authorization": f"Bearer {access_key}:{secret_key}",
             "Content-Type": "application/json"
         }
         
@@ -1070,7 +1071,8 @@ def kling_lipsync():
             'status': 'processing',
             'video_file': video_file_path,
             'audio_file': audio_file_path,
-            'api_key': api_key
+            'access_key': access_key,
+            'secret_key': secret_key
         }
         
         # Clean up temp files after a delay
@@ -1109,17 +1111,18 @@ def kling_lipsync():
 def kling_status(task_id):
     """Poll Kling AI for task status"""
     try:
-        # In production, retrieve API key from database
-        # For now, accept it as a query parameter
-        api_key = request.args.get('api_key')
-        if not api_key:
-            return jsonify({'error': 'API key required'}), 400
+        # In production, retrieve API keys from database
+        # For now, accept them as query parameters
+        access_key = request.args.get('access_key')
+        secret_key = request.args.get('secret_key')
+        if not access_key or not secret_key:
+            return jsonify({'error': 'Both Access Key and Secret Key required'}), 400
         
         # Query Kling API for task status
         kling_api_url = f"https://api.klingai.com/v1/videos/video-to-lip/{task_id}"
         
         headers = {
-            "Authorization": f"Bearer {api_key}"
+            "Authorization": f"Bearer {access_key}:{secret_key}"
         }
         
         response = requests.get(kling_api_url, headers=headers, timeout=15)
@@ -1153,7 +1156,7 @@ def kling_status(task_id):
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
-def upload_to_kling(file_path, api_key):
+def upload_to_kling(file_path, access_key, secret_key):
     """Upload file to Kling and get URL"""
     # Read file and convert to base64
     with open(file_path, 'rb') as f:
@@ -1166,7 +1169,7 @@ def upload_to_kling(file_path, api_key):
     upload_url = "https://api.klingai.com/v1/files/upload"
     
     headers = {
-        "Authorization": f"Bearer {api_key}",
+        "Authorization": f"Bearer {access_key}:{secret_key}",
         "Content-Type": "application/json"
     }
     

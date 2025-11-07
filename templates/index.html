@@ -424,10 +424,15 @@
 
             <form id="lipsyncForm">
                 <div class="form-group">
-                    <label for="klingApiKey">Kling API Key</label>
-                    <input type="password" id="klingApiKey" name="kling_api_key" placeholder="Enter your Kling AI API key" required>
+                    <label for="klingAccessKey">Kling Access Key (AK)</label>
+                    <input type="password" id="klingAccessKey" name="kling_access_key" placeholder="Enter your Access Key" required>
+                </div>
+
+                <div class="form-group">
+                    <label for="klingSecretKey">Kling Secret Key (SK)</label>
+                    <input type="password" id="klingSecretKey" name="kling_secret_key" placeholder="Enter your Secret Key" required>
                     <div class="api-help">
-                        Get your API key from <a href="https://app.klingai.com/global/dev" target="_blank">Kling AI Developer Portal</a>
+                        Get your API keys from <a href="https://app.klingai.com/global/dev" target="_blank">Kling AI Developer Portal</a>
                     </div>
                 </div>
 
@@ -803,7 +808,8 @@
             const formData = new FormData();
             formData.append('video', videoFile.files[0]);
             formData.append('audio', lipsyncAudioFile.files[0]);
-            formData.append('kling_api_key', document.getElementById('klingApiKey').value);
+            formData.append('kling_access_key', document.getElementById('klingAccessKey').value);
+            formData.append('kling_secret_key', document.getElementById('klingSecretKey').value);
 
             try {
                 updateLipsyncProgress(10, 'Uploading files to server...');
@@ -823,14 +829,15 @@
 
                 // Poll for completion
                 const taskId = data.task_id;
-                const klingApiKey = document.getElementById('klingApiKey').value;
+                const klingAccessKey = document.getElementById('klingAccessKey').value;
+                const klingSecretKey = document.getElementById('klingSecretKey').value;
                 let completed = false;
                 let progress = 30;
 
                 while (!completed) {
                     await new Promise(resolve => setTimeout(resolve, 5000)); // Poll every 5 seconds
                     
-                    const statusResponse = await fetch(`/api/kling-status/${taskId}?api_key=${encodeURIComponent(klingApiKey)}`);
+                    const statusResponse = await fetch(`/api/kling-status/${taskId}?access_key=${encodeURIComponent(klingAccessKey)}&secret_key=${encodeURIComponent(klingSecretKey)}`);
                     const statusData = await statusResponse.json();
 
                     if (statusData.status === 'completed') {
