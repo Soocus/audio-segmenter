@@ -318,14 +318,57 @@
         .api-help a:hover {
             text-decoration: underline;
         }
+
+        .nav-tabs {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 30px;
+            border-bottom: 2px solid #e0e0e0;
+        }
+
+        .tab-btn {
+            padding: 12px 24px;
+            background: none;
+            border: none;
+            border-bottom: 3px solid transparent;
+            color: #666;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .tab-btn:hover {
+            color: #667eea;
+        }
+
+        .tab-btn.active {
+            color: #667eea;
+            border-bottom-color: #667eea;
+        }
+
+        .tab-content {
+            display: none;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
     </style>
 </head>
 <body>
     <div class="container">
-        <h1>🎵 Audio Segmenter</h1>
-        <p class="subtitle">Split long audio files into smart segments using AI transcription</p>
+        <div class="nav-tabs">
+            <button class="tab-btn active" data-tab="segmenter">🎵 Audio Segmenter</button>
+            <button class="tab-btn" data-tab="lipsync">💋 Kling Lip Sync</button>
+        </div>
 
-        <form id="uploadForm">
+        <!-- Audio Segmenter Tab -->
+        <div id="segmenter-tab" class="tab-content active">
+            <h1>🎵 Audio Segmenter</h1>
+            <p class="subtitle">Split long audio files into smart segments using AI transcription</p>
+
+            <form id="uploadForm">
             <div class="form-group">
                 <label for="apiKey">Replicate API Key</label>
                 <input type="password" id="apiKey" name="api_key" placeholder="Enter your Replicate API key" required>
@@ -371,6 +414,65 @@
             <button class="download-btn" id="downloadBtn">
                 📥 Download All Segments (ZIP)
             </button>
+        </div>
+        </div>
+
+        <!-- Kling Lip Sync Tab -->
+        <div id="lipsync-tab" class="tab-content">
+            <h1>💋 Kling Lip Sync</h1>
+            <p class="subtitle">Generate AI lip-synced videos with Kling AI</p>
+
+            <form id="lipsyncForm">
+                <div class="form-group">
+                    <label for="klingApiKey">Kling API Key</label>
+                    <input type="password" id="klingApiKey" name="kling_api_key" placeholder="Enter your Kling AI API key" required>
+                    <div class="api-help">
+                        Get your API key from <a href="https://app.klingai.com/global/dev" target="_blank">Kling AI Developer Portal</a>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label>Video File</label>
+                    <div class="file-upload" id="videoUpload">
+                        <input type="file" id="videoFile" name="video" accept="video/*" required>
+                        <div class="file-upload-icon">🎬</div>
+                        <div class="file-upload-text">Click or drag video file here</div>
+                        <div class="file-upload-hint">Supports: MP4, MOV, AVI (max 100MB)</div>
+                    </div>
+                    <div class="file-info" id="videoInfo"></div>
+                </div>
+
+                <div class="form-group">
+                    <label>Audio File (for lip sync)</label>
+                    <div class="file-upload" id="lipsyncAudioUpload">
+                        <input type="file" id="lipsyncAudioFile" name="audio" accept="audio/*" required>
+                        <div class="file-upload-icon">🎤</div>
+                        <div class="file-upload-text">Click or drag audio file here</div>
+                        <div class="file-upload-hint">Supports: MP3, WAV, OGG (max 20MB)</div>
+                    </div>
+                    <div class="file-info" id="lipsyncAudioInfo"></div>
+                </div>
+
+                <button type="submit" class="btn" id="lipsyncBtn">
+                    Generate Lip Sync Video
+                </button>
+            </form>
+
+            <div class="progress-container" id="lipsyncProgressContainer">
+                <div class="progress-bar">
+                    <div class="progress-fill" id="lipsyncProgressFill"></div>
+                </div>
+                <div class="progress-text" id="lipsyncProgressText">Processing...</div>
+            </div>
+
+            <div class="error-container" id="lipsyncErrorContainer"></div>
+
+            <div class="result-container" id="lipsyncResultContainer">
+                <div class="result-title">✅ Lip Sync Complete!</div>
+                <button class="download-btn" id="lipsyncDownloadBtn">
+                    📥 Download Lip-Synced Video
+                </button>
+            </div>
         </div>
     </div>
 
@@ -584,6 +686,183 @@
                         console.error('Cleanup error:', error);
                     }
                 }, 2000);
+            }
+        });
+
+        // ===== TAB SWITCHING =====
+        document.querySelectorAll('.tab-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                const targetTab = btn.dataset.tab;
+                
+                // Update button states
+                document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+                
+                // Update tab content
+                document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
+                document.getElementById(`${targetTab}-tab`).classList.add('active');
+            });
+        });
+
+        // ===== KLING LIP SYNC =====
+        const lipsyncForm = document.getElementById('lipsyncForm');
+        const videoUpload = document.getElementById('videoUpload');
+        const videoFile = document.getElementById('videoFile');
+        const videoInfo = document.getElementById('videoInfo');
+        const lipsyncAudioUpload = document.getElementById('lipsyncAudioUpload');
+        const lipsyncAudioFile = document.getElementById('lipsyncAudioFile');
+        const lipsyncAudioInfo = document.getElementById('lipsyncAudioInfo');
+        const lipsyncBtn = document.getElementById('lipsyncBtn');
+        const lipsyncProgressContainer = document.getElementById('lipsyncProgressContainer');
+        const lipsyncProgressFill = document.getElementById('lipsyncProgressFill');
+        const lipsyncProgressText = document.getElementById('lipsyncProgressText');
+        const lipsyncErrorContainer = document.getElementById('lipsyncErrorContainer');
+        const lipsyncResultContainer = document.getElementById('lipsyncResultContainer');
+        const lipsyncDownloadBtn = document.getElementById('lipsyncDownloadBtn');
+
+        let lipsyncDownloadUrl = '';
+
+        // Video upload interactions
+        videoUpload.addEventListener('click', () => videoFile.click());
+        videoUpload.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            videoUpload.classList.add('active');
+        });
+        videoUpload.addEventListener('dragleave', () => {
+            videoUpload.classList.remove('active');
+        });
+        videoUpload.addEventListener('drop', (e) => {
+            e.preventDefault();
+            videoUpload.classList.remove('active');
+            if (e.dataTransfer.files.length) {
+                videoFile.files = e.dataTransfer.files;
+                updateVideoInfo(e.dataTransfer.files[0]);
+            }
+        });
+        videoFile.addEventListener('change', (e) => {
+            if (e.target.files.length) {
+                updateVideoInfo(e.target.files[0]);
+            }
+        });
+
+        // Lipsync audio upload interactions
+        lipsyncAudioUpload.addEventListener('click', () => lipsyncAudioFile.click());
+        lipsyncAudioUpload.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            lipsyncAudioUpload.classList.add('active');
+        });
+        lipsyncAudioUpload.addEventListener('dragleave', () => {
+            lipsyncAudioUpload.classList.remove('active');
+        });
+        lipsyncAudioUpload.addEventListener('drop', (e) => {
+            e.preventDefault();
+            lipsyncAudioUpload.classList.remove('active');
+            if (e.dataTransfer.files.length) {
+                lipsyncAudioFile.files = e.dataTransfer.files;
+                updateLipsyncAudioInfo(e.dataTransfer.files[0]);
+            }
+        });
+        lipsyncAudioFile.addEventListener('change', (e) => {
+            if (e.target.files.length) {
+                updateLipsyncAudioInfo(e.target.files[0]);
+            }
+        });
+
+        function updateVideoInfo(file) {
+            const sizeMB = (file.size / (1024 * 1024)).toFixed(2);
+            videoInfo.textContent = `🎬 ${file.name} (${sizeMB} MB)`;
+            videoInfo.classList.add('show');
+        }
+
+        function updateLipsyncAudioInfo(file) {
+            const sizeMB = (file.size / (1024 * 1024)).toFixed(2);
+            lipsyncAudioInfo.textContent = `🎤 ${file.name} (${sizeMB} MB)`;
+            lipsyncAudioInfo.classList.add('show');
+        }
+
+        function showLipsyncError(message) {
+            lipsyncErrorContainer.textContent = '❌ ' + message;
+            lipsyncErrorContainer.classList.add('show');
+        }
+
+        function updateLipsyncProgress(percentage, text) {
+            lipsyncProgressFill.style.width = percentage + '%';
+            lipsyncProgressText.textContent = text;
+        }
+
+        // Lipsync form submission
+        lipsyncForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+
+            // Reset UI
+            lipsyncErrorContainer.classList.remove('show');
+            lipsyncResultContainer.classList.remove('show');
+            lipsyncProgressContainer.classList.add('show');
+            lipsyncBtn.disabled = true;
+
+            const formData = new FormData();
+            formData.append('video', videoFile.files[0]);
+            formData.append('audio', lipsyncAudioFile.files[0]);
+            formData.append('kling_api_key', document.getElementById('klingApiKey').value);
+
+            try {
+                updateLipsyncProgress(10, 'Uploading files to server...');
+
+                const response = await fetch('/api/kling-lipsync', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                updateLipsyncProgress(30, 'Submitting to Kling AI...');
+
+                const data = await response.json();
+
+                if (!response.ok) {
+                    throw new Error(data.error || 'Lip sync failed');
+                }
+
+                // Poll for completion
+                const taskId = data.task_id;
+                const klingApiKey = document.getElementById('klingApiKey').value;
+                let completed = false;
+                let progress = 30;
+
+                while (!completed) {
+                    await new Promise(resolve => setTimeout(resolve, 5000)); // Poll every 5 seconds
+                    
+                    const statusResponse = await fetch(`/api/kling-status/${taskId}?api_key=${encodeURIComponent(klingApiKey)}`);
+                    const statusData = await statusResponse.json();
+
+                    if (statusData.status === 'completed') {
+                        completed = true;
+                        lipsyncDownloadUrl = statusData.video_url;
+                        updateLipsyncProgress(100, 'Complete!');
+
+                        setTimeout(() => {
+                            lipsyncProgressContainer.classList.remove('show');
+                            lipsyncResultContainer.classList.add('show');
+                        }, 500);
+                    } else if (statusData.status === 'failed') {
+                        throw new Error(statusData.error || 'Kling AI processing failed');
+                    } else {
+                        // Update progress
+                        progress = Math.min(progress + 5, 90);
+                        updateLipsyncProgress(progress, `Processing with Kling AI... (${statusData.status})`);
+                    }
+                }
+
+            } catch (error) {
+                console.error('Error:', error);
+                showLipsyncError(error.message || 'An error occurred during lip sync processing');
+                lipsyncProgressContainer.classList.remove('show');
+            } finally {
+                lipsyncBtn.disabled = false;
+            }
+        });
+
+        lipsyncDownloadBtn.addEventListener('click', () => {
+            if (lipsyncDownloadUrl) {
+                window.open(lipsyncDownloadUrl, '_blank');
             }
         });
     </script>

@@ -3,4 +3,5 @@ flask-cors==4.0.0
 replicate==0.25.1
 pydub==0.25.1
 werkzeug==3.0.1
+requests==2.31.0
 

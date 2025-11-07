@@ -12,6 +12,8 @@ import zipfile
 from datetime import datetime
 import re
 import time
+import requests
+import base64
 
 app = Flask(__name__)
 CORS(app)  # Enable CORS for all routes
@@ -983,6 +985,207 @@ def trim_and_combine_videos():
                 threading.Thread(target=cleanup_later, daemon=True).start()
         except:
             pass
+
+
+@app.route('/api/kling-lipsync', methods=['POST'])
+def kling_lipsync():
+    """Submit video and audio to Kling AI for lip sync"""
+    video_file_path = None
+    audio_file_path = None
+    
+    try:
+        # Check if files are present
+        if 'video' not in request.files or 'audio' not in request.files:
+            return jsonify({'error': 'Video and audio files are required'}), 400
+        
+        video_file = request.files['video']
+        audio_file = request.files['audio']
+        
+        if video_file.filename == '' or audio_file.filename == '':
+            return jsonify({'error': 'No files selected'}), 400
+        
+        # Get API key
+        api_key = request.form.get('kling_api_key')
+        if not api_key:
+            return jsonify({'error': 'Kling API key is required'}), 400
+        
+        # Save files temporarily
+        video_filename = secure_filename(video_file.filename)
+        audio_filename = secure_filename(audio_file.filename)
+        
+        video_file_path = os.path.join(app.config['UPLOAD_FOLDER'], video_filename)
+        audio_file_path = os.path.join(app.config['UPLOAD_FOLDER'], audio_filename)
+        
+        video_file.save(video_file_path)
+        audio_file.save(audio_file_path)
+        
+        print(f"Files saved: video={video_file_path}, audio={audio_file_path}")
+        
+        # Upload files and get Kling URLs
+        video_url = upload_to_kling(video_file_path, api_key)
+        audio_url = upload_to_kling(audio_file_path, api_key)
+        
+        print(f"Files uploaded to Kling: video={video_url}, audio={audio_url}")
+        
+        # Submit lip sync job to Kling AI
+        kling_api_url = "https://api.klingai.com/v1/videos/video-to-lip"
+        
+        headers = {
+            "Authorization": f"Bearer {api_key}",
+            "Content-Type": "application/json"
+        }
+        
+        payload = {
+            "model_name": "kling-v1",
+            "video_url": video_url,
+            "audio_url": audio_url,
+            "cfg_scale": 0.5,
+            "mode": "std"
+        }
+        
+        print(f"Submitting to Kling API: {payload}")
+        
+        response = requests.post(kling_api_url, headers=headers, json=payload, timeout=30)
+        
+        if response.status_code != 200:
+            error_msg = f"Kling API error: {response.status_code} - {response.text}"
+            print(error_msg)
+            return jsonify({'error': error_msg}), 500
+        
+        result = response.json()
+        
+        if result.get('code') != 0:
+            error_msg = f"Kling API error: {result.get('message', 'Unknown error')}"
+            print(error_msg)
+            return jsonify({'error': error_msg}), 500
+        
+        task_id = result['data']['task_id']
+        
+        print(f"Kling task created: {task_id}")
+        
+        # Store task info for polling
+        # In production, use a database
+        task_info = {
+            'task_id': task_id,
+            'status': 'processing',
+            'video_file': video_file_path,
+            'audio_file': audio_file_path,
+            'api_key': api_key
+        }
+        
+        # Clean up temp files after a delay
+        # In production, clean up after task completes
+        
+        return jsonify({
+            'success': True,
+            'task_id': task_id
+        })
+    
+    except requests.exceptions.RequestException as e:
+        error_message = f'Network error: {str(e)}'
+        print(f"Error: {error_message}")
+        
+        # Clean up on error
+        if video_file_path and os.path.exists(video_file_path):
+            os.remove(video_file_path)
+        if audio_file_path and os.path.exists(audio_file_path):
+            os.remove(audio_file_path)
+        
+        return jsonify({'error': error_message}), 500
+    
+    except Exception as e:
+        error_message = str(e)
+        print(f"Error: {error_message}")
+        
+        # Clean up on error
+        if video_file_path and os.path.exists(video_file_path):
+            os.remove(video_file_path)
+        if audio_file_path and os.path.exists(audio_file_path):
+            os.remove(audio_file_path)
+        
+        return jsonify({'error': error_message}), 500
+
+@app.route('/api/kling-status/<task_id>')
+def kling_status(task_id):
+    """Poll Kling AI for task status"""
+    try:
+        # In production, retrieve API key from database
+        # For now, accept it as a query parameter
+        api_key = request.args.get('api_key')
+        if not api_key:
+            return jsonify({'error': 'API key required'}), 400
+        
+        # Query Kling API for task status
+        kling_api_url = f"https://api.klingai.com/v1/videos/video-to-lip/{task_id}"
+        
+        headers = {
+            "Authorization": f"Bearer {api_key}"
+        }
+        
+        response = requests.get(kling_api_url, headers=headers, timeout=15)
+        
+        if response.status_code != 200:
+            return jsonify({'error': f'Kling API error: {response.status_code}'}), 500
+        
+        result = response.json()
+        
+        if result.get('code') != 0:
+            return jsonify({'error': result.get('message', 'Unknown error')}), 500
+        
+        task_data = result['data']['task']
+        task_status = task_data['status']
+        
+        response_data = {
+            'task_id': task_id,
+            'status': task_status
+        }
+        
+        # Status can be: processing, succeed, failed
+        if task_status == 'succeed':
+            response_data['video_url'] = task_data['task_result']['videos'][0]['url']
+            response_data['status'] = 'completed'
+        elif task_status == 'failed':
+            response_data['error'] = task_data.get('task_status_msg', 'Task failed')
+            response_data['status'] = 'failed'
+        
+        return jsonify(response_data)
+    
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+def upload_to_kling(file_path, api_key):
+    """Upload file to Kling and get URL"""
+    # Read file and convert to base64
+    with open(file_path, 'rb') as f:
+        file_content = f.read()
+    
+    file_base64 = base64.b64encode(file_content).decode('utf-8')
+    file_extension = os.path.splitext(file_path)[1][1:]  # Remove the dot
+    
+    # Upload to Kling
+    upload_url = "https://api.klingai.com/v1/files/upload"
+    
+    headers = {
+        "Authorization": f"Bearer {api_key}",
+        "Content-Type": "application/json"
+    }
+    
+    payload = {
+        "file_content": file_base64,
+        "file_extension": file_extension
+    }
+    
+    response = requests.post(upload_url, headers=headers, json=payload, timeout=60)
+    
+    if response.status_code != 200:
+        raise Exception(f"Failed to upload file: {response.status_code} - {response.text}")
+    
+    result = response.json()
+    
+    if result.get('code') != 0:
+        raise Exception(f"Upload error: {result.get('message', 'Unknown error')}")
+    
+    return result['data']['url']
 
 
 if __name__ == '__main__':
