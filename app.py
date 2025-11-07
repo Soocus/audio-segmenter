@@ -1026,43 +1026,60 @@ def kling_lipsync():
         
         print(f"Files saved: video={video_file_path}, audio={audio_file_path}")
         
-        # Read and encode files as base64
-        print("Encoding video file...")
-        with open(video_file_path, 'rb') as f:
-            video_base64 = base64.b64encode(f.read()).decode('utf-8')
-        
-        print("Encoding audio file...")
-        with open(audio_file_path, 'rb') as f:
-            audio_base64 = base64.b64encode(f.read()).decode('utf-8')
+        try:
+            # Read and encode files as base64
+            print("Encoding video file...")
+            with open(video_file_path, 'rb') as f:
+                video_content = f.read()
+                video_base64 = base64.b64encode(video_content).decode('utf-8')
+                print(f"Video file encoded: {len(video_content)} bytes -> {len(video_base64)} chars")
+            
+            print("Encoding audio file...")
+            with open(audio_file_path, 'rb') as f:
+                audio_content = f.read()
+                audio_base64 = base64.b64encode(audio_content).decode('utf-8')
+                print(f"Audio file encoded: {len(audio_content)} bytes -> {len(audio_base64)} chars")
+        except Exception as e:
+            error_msg = f"Failed to encode files: {str(e)}"
+            print(error_msg)
+            return jsonify({'error': error_msg}), 500
         
         # Submit lip sync job to Kling AI
         kling_api_url = "https://api.klingai.com/v1/videos/video-to-lip"
         
+        # Get file extensions
+        video_ext = os.path.splitext(video_file_path)[1][1:].lower()  # Remove dot and lowercase
+        audio_ext = os.path.splitext(audio_file_path)[1][1:].lower()
+        
+        print(f"File extensions: video={video_ext}, audio={audio_ext}")
+        
+        # Prepare headers
         headers = {
             "Authorization": f"Bearer {access_key}:{secret_key}",
             "Content-Type": "application/json"
         }
         
-        # Get file extensions
-        video_ext = os.path.splitext(video_file_path)[1][1:]  # Remove the dot
-        audio_ext = os.path.splitext(audio_file_path)[1][1:]  # Remove the dot
+        print(f"Authorization header: Bearer {access_key[:10]}...:{secret_key[:10]}...")
         
-        # Prepare JSON payload according to Kling API docs
+        # Prepare JSON payload - try minimal required fields first
         payload = {
             "model_name": "kling-v1",
             "video": video_base64,
             "audio": audio_base64,
-            "video_type": video_ext,
-            "audio_type": audio_ext,
             "cfg_scale": 0.5
         }
         
-        print(f"Submitting to Kling API...")
-        print(f"- Video: {len(video_base64)} chars ({video_ext})")
-        print(f"- Audio: {len(audio_base64)} chars ({audio_ext})")
+        print(f"Submitting to Kling API: {kling_api_url}")
         print(f"- Payload keys: {list(payload.keys())}")
+        print(f"- Video: {len(video_base64)} chars")
+        print(f"- Audio: {len(audio_base64)} chars")
         
-        response = requests.post(kling_api_url, headers=headers, json=payload, timeout=180)
+        try:
+            response = requests.post(kling_api_url, headers=headers, json=payload, timeout=180)
+        except Exception as e:
+            error_msg = f"Request failed: {str(e)}"
+            print(error_msg)
+            return jsonify({'error': error_msg}), 500
         
         print(f"Response status: {response.status_code}")
         print(f"Response headers: {dict(response.headers)}")
