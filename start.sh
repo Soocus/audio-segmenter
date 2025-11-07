@@ -41,7 +41,7 @@ echo ""
 echo "✅ All dependencies installed!"
 echo ""
 echo "🚀 Starting web server..."
-echo "📍 Open http://localhost:5001 in your browser"
+echo "📍 Open http://localhost:5003 in your browser"
 echo ""
 
 python3 app.py

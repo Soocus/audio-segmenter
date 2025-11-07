@@ -1,4 +1,5 @@
 from flask import Flask, render_template, request, jsonify, send_file, Response, stream_with_context
+from flask_cors import CORS
 from werkzeug.utils import secure_filename
 import os
 import replicate
@@ -13,6 +14,7 @@ import re
 import time
 
 app = Flask(__name__)
+CORS(app)  # Enable CORS for all routes
 app.config['MAX_CONTENT_LENGTH'] = 500 * 1024 * 1024  # 500MB max file size
 app.config['UPLOAD_FOLDER'] = tempfile.mkdtemp()
 app.config['SEND_FILE_MAX_AGE_DEFAULT'] = 0  # Disable caching for development
@@ -224,6 +226,42 @@ def extract_text_for_segments(transcript_segments, audio_segments):
 @app.route('/')
 def index():
     return render_template('index.html')
+
+@app.route('/test')
+def test():
+    return '''
+    <!DOCTYPE html>
+    <html>
+    <head><title>API Test</title></head>
+    <body>
+        <h1>API Connection Test</h1>
+        <button onclick="testAPI()">Test /api/estimate-time</button>
+        <pre id="result"></pre>
+        <script>
+            async function testAPI() {
+                const resultEl = document.getElementById('result');
+                resultEl.textContent = 'Testing...\\n';
+                
+                try {
+                    resultEl.textContent += 'Attempting fetch to /api/estimate-time...\\n';
+                    const response = await fetch('/api/estimate-time', {
+                        method: 'POST',
+                        body: new FormData()
+                    });
+                    
+                    resultEl.textContent += 'Response status: ' + response.status + '\\n';
+                    const data = await response.json();
+                    resultEl.textContent += 'SUCCESS!\\n' + JSON.stringify(data, null, 2);
+                } catch (error) {
+                    resultEl.textContent += 'FETCH FAILED!\\n';
+                    resultEl.textContent += 'Error: ' + error.message + '\\n';
+                    resultEl.textContent += 'Stack: ' + error.stack;
+                }
+            }
+        </script>
+    </body>
+    </html>
+    '''
 
 @app.route('/api/estimate-time', methods=['POST'])
 def estimate_time():
