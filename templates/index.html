@@ -1,0 +1,592 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Audio Segmenter - AI Transcript Splitter</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+
+        .container {
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            max-width: 700px;
+            width: 100%;
+            padding: 40px;
+            animation: fadeIn 0.5s ease-in;
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        h1 {
+            color: #333;
+            margin-bottom: 10px;
+            font-size: 32px;
+            text-align: center;
+        }
+
+        .subtitle {
+            color: #666;
+            text-align: center;
+            margin-bottom: 30px;
+            font-size: 16px;
+        }
+
+        .form-group {
+            margin-bottom: 25px;
+        }
+
+        label {
+            display: block;
+            color: #333;
+            font-weight: 600;
+            margin-bottom: 8px;
+            font-size: 14px;
+        }
+
+        input[type="text"],
+        input[type="number"],
+        input[type="password"] {
+            width: 100%;
+            padding: 12px 15px;
+            border: 2px solid #e0e0e0;
+            border-radius: 10px;
+            font-size: 14px;
+            transition: all 0.3s ease;
+        }
+
+        input[type="text"]:focus,
+        input[type="number"]:focus,
+        input[type="password"]:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+
+        .file-upload {
+            border: 3px dashed #e0e0e0;
+            border-radius: 10px;
+            padding: 40px;
+            text-align: center;
+            transition: all 0.3s ease;
+            cursor: pointer;
+            background: #f9f9f9;
+        }
+
+        .file-upload:hover {
+            border-color: #667eea;
+            background: #f5f7ff;
+        }
+
+        .file-upload.active {
+            border-color: #667eea;
+            background: #f5f7ff;
+        }
+
+        .file-upload input[type="file"] {
+            display: none;
+        }
+
+        .file-upload-icon {
+            font-size: 48px;
+            color: #667eea;
+            margin-bottom: 10px;
+        }
+
+        .file-upload-text {
+            color: #666;
+            font-size: 16px;
+            margin-bottom: 5px;
+        }
+
+        .file-upload-hint {
+            color: #999;
+            font-size: 13px;
+        }
+
+        .file-info {
+            margin-top: 15px;
+            padding: 12px;
+            background: #f0f7ff;
+            border-radius: 8px;
+            color: #667eea;
+            font-size: 14px;
+            display: none;
+        }
+
+        .file-info.show {
+            display: block;
+        }
+
+        .btn {
+            width: 100%;
+            padding: 15px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            border-radius: 10px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
+        }
+
+        .btn:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(102, 126, 234, 0.6);
+        }
+
+        .btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+
+        .progress-container {
+            display: none;
+            margin-top: 20px;
+        }
+
+        .progress-container.show {
+            display: block;
+        }
+
+        .progress-bar {
+            width: 100%;
+            height: 8px;
+            background: #e0e0e0;
+            border-radius: 10px;
+            overflow: hidden;
+            margin-bottom: 10px;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #667eea 0%, #764ba2 100%);
+            width: 0%;
+            transition: width 0.3s ease;
+            animation: pulse 1.5s ease-in-out infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% {
+                opacity: 1;
+            }
+            50% {
+                opacity: 0.6;
+            }
+        }
+
+        .progress-text {
+            text-align: center;
+            color: #666;
+            font-size: 14px;
+        }
+
+        .result-container {
+            display: none;
+            margin-top: 20px;
+            padding: 20px;
+            background: #f0fff4;
+            border-radius: 10px;
+            border: 2px solid #48bb78;
+        }
+
+        .result-container.show {
+            display: block;
+            animation: slideIn 0.5s ease-in;
+        }
+
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateY(-10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .result-title {
+            color: #22543d;
+            font-weight: 600;
+            margin-bottom: 15px;
+            font-size: 18px;
+        }
+
+        .result-stats {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 10px;
+            margin-bottom: 15px;
+        }
+
+        .stat-item {
+            background: white;
+            padding: 12px;
+            border-radius: 8px;
+            text-align: center;
+        }
+
+        .stat-value {
+            font-size: 24px;
+            font-weight: 700;
+            color: #667eea;
+        }
+
+        .stat-label {
+            font-size: 12px;
+            color: #666;
+            margin-top: 4px;
+        }
+
+        .download-btn {
+            width: 100%;
+            padding: 12px;
+            background: #48bb78;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 15px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .download-btn:hover {
+            background: #38a169;
+            transform: translateY(-2px);
+        }
+
+        .error-container {
+            display: none;
+            margin-top: 20px;
+            padding: 15px;
+            background: #fff5f5;
+            border-radius: 10px;
+            border: 2px solid #fc8181;
+            color: #c53030;
+        }
+
+        .error-container.show {
+            display: block;
+        }
+
+        .help-text {
+            font-size: 12px;
+            color: #999;
+            margin-top: 5px;
+        }
+
+        .api-help {
+            margin-top: 5px;
+            font-size: 12px;
+            color: #667eea;
+        }
+
+        .api-help a {
+            color: #667eea;
+            text-decoration: none;
+            font-weight: 600;
+        }
+
+        .api-help a:hover {
+            text-decoration: underline;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🎵 Audio Segmenter</h1>
+        <p class="subtitle">Split long audio files into smart segments using AI transcription</p>
+
+        <form id="uploadForm">
+            <div class="form-group">
+                <label for="apiKey">Replicate API Key</label>
+                <input type="password" id="apiKey" name="api_key" placeholder="Enter your Replicate API key" required>
+                <div class="api-help">
+                    Don't have one? <a href="https://replicate.com/account/api-tokens" target="_blank">Get your free API key here</a>
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label for="maxDuration">Max Segment Duration (seconds)</label>
+                <input type="number" id="maxDuration" name="max_duration" value="60" min="10" max="300" required>
+                <div class="help-text">Segments will be split at punctuation marks before exceeding this duration</div>
+            </div>
+
+            <div class="form-group">
+                <label>Audio File</label>
+                <div class="file-upload" id="fileUpload">
+                    <input type="file" id="audioFile" name="audio" accept="audio/*" required>
+                    <div class="file-upload-icon">🎤</div>
+                    <div class="file-upload-text">Click or drag audio file here</div>
+                    <div class="file-upload-hint">Supports: MP3, WAV, OGG, M4A, FLAC, AAC, WMA (max 500MB)</div>
+                </div>
+                <div class="file-info" id="fileInfo"></div>
+            </div>
+
+            <button type="submit" class="btn" id="submitBtn">
+                Process Audio
+            </button>
+        </form>
+
+        <div class="progress-container" id="progressContainer">
+            <div class="progress-bar">
+                <div class="progress-fill" id="progressFill"></div>
+            </div>
+            <div class="progress-text" id="progressText">Processing...</div>
+        </div>
+
+        <div class="error-container" id="errorContainer"></div>
+
+        <div class="result-container" id="resultContainer">
+            <div class="result-title">✅ Processing Complete!</div>
+            <div class="result-stats" id="resultStats"></div>
+            <button class="download-btn" id="downloadBtn">
+                📥 Download All Segments (ZIP)
+            </button>
+        </div>
+    </div>
+
+    <script>
+        const uploadForm = document.getElementById('uploadForm');
+        const fileUpload = document.getElementById('fileUpload');
+        const audioFile = document.getElementById('audioFile');
+        const fileInfo = document.getElementById('fileInfo');
+        const submitBtn = document.getElementById('submitBtn');
+        const progressContainer = document.getElementById('progressContainer');
+        const progressFill = document.getElementById('progressFill');
+        const progressText = document.getElementById('progressText');
+        const errorContainer = document.getElementById('errorContainer');
+        const resultContainer = document.getElementById('resultContainer');
+        const resultStats = document.getElementById('resultStats');
+        const downloadBtn = document.getElementById('downloadBtn');
+
+        let downloadUrl = '';
+        let estimatedTime = null;
+        let progressInterval = null;
+
+        // File upload interactions
+        fileUpload.addEventListener('click', () => audioFile.click());
+
+        fileUpload.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            fileUpload.classList.add('active');
+        });
+
+        fileUpload.addEventListener('dragleave', () => {
+            fileUpload.classList.remove('active');
+        });
+
+        fileUpload.addEventListener('drop', (e) => {
+            e.preventDefault();
+            fileUpload.classList.remove('active');
+            if (e.dataTransfer.files.length) {
+                audioFile.files = e.dataTransfer.files;
+                updateFileInfo(e.dataTransfer.files[0]);
+            }
+        });
+
+        audioFile.addEventListener('change', (e) => {
+            if (e.target.files.length) {
+                updateFileInfo(e.target.files[0]);
+            }
+        });
+
+        function updateFileInfo(file) {
+            const sizeMB = (file.size / (1024 * 1024)).toFixed(2);
+            fileInfo.textContent = `📁 ${file.name} (${sizeMB} MB)`;
+            fileInfo.classList.add('show');
+        }
+
+        function showError(message) {
+            errorContainer.textContent = '❌ ' + message;
+            errorContainer.classList.add('show');
+            // Error stays visible until user submits again or refreshes page
+        }
+
+        function updateProgress(percentage, text) {
+            progressFill.style.width = percentage + '%';
+            progressText.textContent = text;
+        }
+
+        // Form submission
+        uploadForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+
+            // Reset UI
+            errorContainer.classList.remove('show');
+            resultContainer.classList.remove('show');
+            progressContainer.classList.add('show');
+            submitBtn.disabled = true;
+
+            // Clear any existing progress interval
+            if (progressInterval) {
+                clearInterval(progressInterval);
+            }
+
+            const formData = new FormData();
+            formData.append('audio', audioFile.files[0]);
+            formData.append('api_key', document.getElementById('apiKey').value);
+            formData.append('max_duration', document.getElementById('maxDuration').value);
+
+            try {
+                updateProgress(5, 'Analyzing audio file...');
+
+                // Get estimated time from server
+                const estimateFormData = new FormData();
+                estimateFormData.append('audio', audioFile.files[0]);
+                
+                const estimateResponse = await fetch('/api/estimate-time', {
+                    method: 'POST',
+                    body: estimateFormData
+                });
+                
+                const estimateData = await estimateResponse.json();
+                estimatedTime = estimateData.estimated_time;
+                
+                // Add small 20% buffer for network/processing variance
+                const safetyBufferedTime = estimatedTime * 1.2;
+                
+                const estimatedSeconds = Math.ceil(estimatedTime);
+                const timeText = estimatedSeconds < 60 
+                    ? `${estimatedSeconds} seconds`
+                    : `${Math.ceil(estimatedSeconds / 60)} minute${Math.ceil(estimatedSeconds / 60) > 1 ? 's' : ''}`;
+                
+                updateProgress(10, `Starting transcription (estimated ${timeText})...`);
+                
+                // Auto-progress the bar smoothly from 10% to 90% over the buffered time
+                let currentProgress = 10;
+                const targetProgress = 90;
+                const progressIncrement = (targetProgress - currentProgress) / (safetyBufferedTime * 2); // Update every 500ms
+                
+                progressInterval = setInterval(() => {
+                    currentProgress += progressIncrement;
+                    if (currentProgress < targetProgress) {
+                        const remainingSeconds = Math.ceil((targetProgress - currentProgress) / progressIncrement * 0.5);
+                        const remainingText = remainingSeconds > 60 
+                            ? `${Math.ceil(remainingSeconds / 60)} minute${Math.ceil(remainingSeconds / 60) > 1 ? 's' : ''}`
+                            : `${remainingSeconds} seconds`;
+                        updateProgress(currentProgress, `AI transcription in progress... (~${remainingText} remaining)`);
+                    } else {
+                        clearInterval(progressInterval);
+                        updateProgress(90, 'Finalizing transcription...');
+                    }
+                }, 500);
+
+                // Use a longer timeout for fetch (15 minutes = 900 seconds)
+                // This prevents the browser from timing out during long transcriptions
+                const controller = new AbortController();
+                const timeoutId = setTimeout(() => controller.abort(), 900000); // 15 minute timeout
+                
+                const response = await fetch('/api/process', {
+                    method: 'POST',
+                    body: formData,
+                    signal: controller.signal,
+                    // Disable caching to ensure fresh response
+                    cache: 'no-cache',
+                    // Keep connection alive
+                    keepalive: true
+                });
+                
+                clearTimeout(timeoutId);
+                
+                // Clear the auto-progress interval
+                clearInterval(progressInterval);
+
+                const data = await response.json();
+
+                if (!response.ok) {
+                    throw new Error(data.error || 'Processing failed');
+                }
+
+                updateProgress(92, 'Splitting audio at natural breaks...');
+                
+                await new Promise(resolve => setTimeout(resolve, 300));
+                updateProgress(95, 'Creating ZIP file...');
+                
+                await new Promise(resolve => setTimeout(resolve, 300));
+                updateProgress(100, 'Complete!');
+
+                // Display results
+                downloadUrl = data.download_url;
+                const metadata = data.metadata;
+
+                resultStats.innerHTML = `
+                    <div class="stat-item">
+                        <div class="stat-value">${metadata.total_segments}</div>
+                        <div class="stat-label">Segments</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-value">${metadata.max_duration}s</div>
+                        <div class="stat-label">Max Duration</div>
+                    </div>
+                `;
+
+                setTimeout(() => {
+                    progressContainer.classList.remove('show');
+                    resultContainer.classList.add('show');
+                }, 500);
+
+            } catch (error) {
+                console.error('Error:', error);
+                showError(error.message || 'An error occurred during processing');
+                progressContainer.classList.remove('show');
+                
+                // Clear progress interval on error
+                if (progressInterval) {
+                    clearInterval(progressInterval);
+                }
+            } finally {
+                submitBtn.disabled = false;
+            }
+        });
+
+        downloadBtn.addEventListener('click', async () => {
+            if (downloadUrl) {
+                // Trigger download
+                window.location.href = downloadUrl;
+                
+                // Clean up files after a short delay to ensure download started
+                setTimeout(async () => {
+                    try {
+                        const filename = downloadUrl.split('/').pop();
+                        await fetch(`/api/cleanup/${filename}`, {
+                            method: 'POST'
+                        });
+                    } catch (error) {
+                        console.error('Cleanup error:', error);
+                    }
+                }, 2000);
+            }
+        });
+    </script>
+</body>
+</html>
+

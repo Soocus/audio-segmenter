@@ -1,0 +1,475 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <style>
+    * {
+      box-sizing: border-box;
+    }
+    
+    body {
+      width: 400px;
+      padding: 10px 20px 20px 20px;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      margin: 0;
+      overscroll-behavior: none;
+      overflow-y: auto;
+    }
+    
+    h2 {
+      margin: 0 0 15px 0;
+      color: #333;
+      font-size: 18px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    
+    #refreshBtn {
+      padding: 6px;
+      background: #667eea;
+      color: white;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 16px;
+      transition: all 0.2s;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 32px;
+      height: 32px;
+    }
+    
+    #refreshBtn:hover {
+      background: #5568d3;
+      transform: scale(1.1);
+    }
+    
+    .step {
+      margin-bottom: 20px;
+      padding: 15px;
+      background: #f5f5f5;
+      border-radius: 8px;
+    }
+    
+    .step-title {
+      font-weight: 600;
+      margin-bottom: 10px;
+      color: #667eea;
+    }
+    
+    button {
+      width: 100%;
+      padding: 12px;
+      border: none;
+      border-radius: 6px;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    
+    button:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+    
+    .btn-primary {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+    }
+    
+    .btn-primary:hover:not(:disabled) {
+      transform: translateY(-2px);
+      box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+    }
+    
+    .btn-success {
+      background: #48bb78;
+      color: white;
+    }
+    
+    .btn-success:hover:not(:disabled) {
+      background: #38a169;
+      transform: translateY(-2px);
+    }
+    
+    .btn-warning {
+      background: #ed8936;
+      color: white;
+      margin-top: 10px;
+    }
+    
+    .btn-warning:hover:not(:disabled) {
+      background: #dd6b20;
+      transform: translateY(-2px);
+    }
+    
+    .btn-secondary {
+      background: #718096;
+      color: white;
+    }
+    
+    .btn-secondary:hover:not(:disabled) {
+      background: #4a5568;
+      transform: translateY(-2px);
+    }
+    
+    .status {
+      padding: 12px;
+      background: white;
+      border: 2px solid #e0e0e0;
+      border-radius: 6px;
+      margin-top: 10px;
+      font-size: 13px;
+    }
+    
+    .status-item {
+      display: flex;
+      justify-content: space-between;
+      margin: 5px 0;
+    }
+    
+    .status-label {
+      color: #666;
+    }
+    
+    .status-value {
+      font-weight: 600;
+      color: #333;
+    }
+    
+    .progress-bar {
+      width: 100%;
+      height: 8px;
+      background: #e0e0e0;
+      border-radius: 4px;
+      overflow: hidden;
+      margin: 10px 0;
+    }
+    
+    .progress-fill {
+      height: 100%;
+      background: linear-gradient(90deg, #667eea 0%, #764ba2 100%);
+      width: 0%;
+      transition: width 0.3s;
+    }
+    
+    .success {
+      color: #48bb78;
+    }
+    
+    .error {
+      color: #f56565;
+    }
+    
+    .warning {
+      padding: 10px;
+      background: #fff5f5;
+      border: 1px solid #fc8181;
+      border-radius: 6px;
+      color: #c53030;
+      font-size: 13px;
+      margin-top: 10px;
+    }
+    
+    .info {
+      padding: 10px;
+      background: #f0f7ff;
+      border: 1px solid #90cdf4;
+      border-radius: 6px;
+      color: #2c5282;
+      font-size: 12px;
+      margin-top: 10px;
+    }
+    
+    .tabs {
+      display: flex;
+      border-bottom: 2px solid #e0e0e0;
+      margin: -10px -20px 20px -20px;
+      background: #f5f5f5;
+    }
+    
+    .tab {
+      flex: 1;
+      padding: 15px;
+      text-align: center;
+      cursor: pointer;
+      font-weight: 600;
+      color: #666;
+      transition: all 0.2s;
+      border-bottom: 3px solid transparent;
+    }
+    
+    .tab:hover {
+      background: #e8e8e8;
+    }
+    
+    .tab.active {
+      background: white;
+      color: #667eea;
+      border-bottom-color: #667eea;
+    }
+    
+    .tab-content {
+      display: none;
+    }
+    
+    .tab-content.active {
+      display: block;
+    }
+    
+    .video-item {
+      padding: 10px;
+      margin-bottom: 8px;
+      background: #f9f9f9;
+      border: 1px solid #e0e0e0;
+      border-radius: 6px;
+      font-size: 12px;
+    }
+    
+    .video-item:hover {
+      background: #f0f7ff;
+      border-color: #667eea;
+    }
+    
+    .video-number {
+      font-weight: 700;
+      color: #667eea;
+      margin-bottom: 4px;
+    }
+    
+    .video-url {
+      color: #666;
+      word-break: break-all;
+      font-family: monospace;
+      font-size: 10px;
+      background: white;
+      padding: 4px;
+      border-radius: 3px;
+      margin-top: 4px;
+    }
+    
+    .video-info {
+      color: #999;
+      font-size: 10px;
+      margin-top: 4px;
+    }
+  </style>
+</head>
+<body>
+  <h2>
+    <span>🎬 Kling Complete Workflow</span>
+    <button id="refreshBtn" title="Clear saved data and reset extension">🔄</button>
+  </h2>
+  
+  <div class="tabs">
+    <div class="tab active" id="segmenterTab">✂️ Segmenter</div>
+    <div class="tab" id="uploadTab">📤 Upload</div>
+    <div class="tab" id="downloadTab">📥 Download</div>
+  </div>
+  
+  <!-- Segmenter Tab Content -->
+  <div class="tab-content active" id="segmenterContent">
+    <div class="info" style="margin-bottom: 15px; background: #f0f7ff; border: 2px solid #667eea;">
+      ℹ️ <strong>You can close this popup when status shows "Transcribing audio..."</strong> Reopen within 20 minutes to complete audio splitting (or data will be cleared).
+    </div>
+    
+    <div class="step">
+      <div class="step-title">Step 1: Replicate API Key</div>
+      <div class="info">
+        Get your API key from <a href="https://replicate.com/account/api-tokens" target="_blank">replicate.com/account/api-tokens</a>
+      </div>
+      <input type="password" id="replicateApiKey" placeholder="Enter your Replicate API key" style="width: 100%; padding: 8px; border: 2px solid #e0e0e0; border-radius: 6px; font-size: 14px; margin-top: 8px;">
+      <div style="font-size: 11px; color: #999; margin-top: 5px;">
+        Your API key is stored securely in your browser
+      </div>
+    </div>
+    
+    <div class="step">
+      <div class="step-title">Step 2: Upload Audio File</div>
+      <button class="btn-primary" id="selectAudioFile">Choose Audio File</button>
+      <div class="status" id="audioFileStatus" style="display: none;">
+        <div class="status-item">
+          <span class="status-label">File:</span>
+          <span class="status-value" id="audioFileName">-</span>
+        </div>
+        <div class="status-item">
+          <span class="status-label">Duration:</span>
+          <span class="status-value" id="audioDuration">-</span>
+        </div>
+      </div>
+    </div>
+    
+    <div class="step">
+      <div class="step-title">Step 3: Set Max Segment Duration</div>
+      <div style="margin-bottom: 10px;">
+        <label for="maxDuration" style="display: block; font-size: 13px; color: #666; margin-bottom: 5px;">
+          Max duration per segment (seconds):
+        </label>
+        <input type="number" id="maxDuration" min="10" max="120" value="60" style="width: 100%; padding: 8px; border: 2px solid #e0e0e0; border-radius: 6px; font-size: 14px;">
+        <div style="font-size: 11px; color: #999; margin-top: 3px;">
+          Recommended: 60 seconds for Kling AI
+        </div>
+      </div>
+    </div>
+    
+    <button class="btn-primary" id="startSegmentation" disabled>🚀 Generate Segments</button>
+    
+    <div class="status" id="segmentationStatus" style="display: none;">
+      <div class="status-item">
+        <span class="status-label">Status:</span>
+        <span class="status-value" id="segmentationCurrentStep">Initializing...</span>
+      </div>
+      <div class="progress-bar">
+        <div class="progress-fill" id="segmentationProgressFill"></div>
+      </div>
+      <div style="font-size: 12px; color: #666; margin-top: 5px;" id="segmentationDetail"></div>
+    </div>
+    
+    <div class="info" id="segmentationResult" style="display: none; margin-top: 15px;">
+      ✓ Generated <span id="totalSegments">0</span> segments
+      <button class="btn-primary" id="downloadSegmentsZip" style="margin-top: 10px; width: 100%;">📥 Download ZIP</button>
+      <button class="btn-secondary" id="continueToUpload" style="margin-top: 10px; width: 100%;">▶️ Continue to Upload Tab</button>
+    </div>
+  </div>
+  
+  <!-- Upload Tab Content -->
+  <div class="tab-content" id="uploadContent">
+    <div class="step">
+      <div class="step-title">Step 1: Load ZIP with Audio Segments</div>
+      <button class="btn-primary" id="selectZip">Select ZIP File</button>
+      <div class="status" id="zipStatus" style="display: none;">
+        <div class="status-item">
+          <span class="status-label">Audio Segments:</span>
+          <span class="status-value" id="segmentCount">0</span>
+        </div>
+      </div>
+    </div>
+    
+    <div class="step">
+      <div class="step-title">Step 2: Select Preset Video</div>
+      <button class="btn-primary" id="selectVideo">Choose Video File</button>
+      <div class="status" id="videoStatus" style="display: none;">
+        <div class="status-item">
+          <span class="status-label">Video:</span>
+          <span class="status-value" id="videoName">-</span>
+        </div>
+      </div>
+    </div>
+    
+    <div class="step">
+      <div class="step-title">Step 3: Start Batch Upload</div>
+      <div class="info" style="margin-bottom: 10px;">
+        Make sure you're on the Kling lip-sync page before starting!
+      </div>
+      <div class="info" style="margin-bottom: 10px; background: #f0f7ff; border: 2px solid #667eea;">
+        ℹ️ <strong>You can close this popup while upload is running!</strong> The process continues in the background. Reopen to check progress or pause.
+        <br><br>
+        ⚡ <strong>Smart Upload:</strong> Automatically waits for buttons to become enabled (no fixed delays). First segment includes video upload, subsequent segments use fast replace workflow.
+      </div>
+      <button class="btn-success" id="startUpload" disabled>🚀 Start Upload</button>
+      <button class="btn-warning" id="pauseUpload" style="display: none;">⏸️ Pause</button>
+      
+      <div class="status" id="uploadStatus" style="display: none;">
+        <div class="status-item">
+          <span class="status-label">Progress:</span>
+          <span class="status-value"><span id="uploadCount">0</span> / <span id="totalCount">0</span></span>
+        </div>
+        <div class="progress-bar">
+          <div class="progress-fill" id="progressFill"></div>
+        </div>
+        <div id="currentFile" style="font-size: 12px; color: #666; margin-top: 5px; white-space: pre-line; line-height: 1.4;"></div>
+      </div>
+    </div>
+  </div>
+  
+  <!-- Download Tab Content -->
+  <div class="tab-content" id="downloadContent">
+    <div class="step">
+      <div class="step-title">Download Generated Videos</div>
+      <div class="info">
+        The extension automatically detects video URLs as they load in the background. You can download directly or click below to verify which videos will be downloaded.
+      </div>
+      
+      <button class="btn-secondary" id="scanVideos" style="margin-bottom: 15px;">🔍 Show Detected Videos (Optional)</button>
+      
+      <div id="videoListContainer" style="display: none; margin-bottom: 15px;">
+        <div style="font-size: 13px; font-weight: 600; color: #333; margin-bottom: 8px;">
+          Found Videos (<span id="foundVideoCount">0</span>):
+        </div>
+        <div id="videoList" style="max-height: 300px; overflow-y: auto; border: 2px solid #e0e0e0; border-radius: 6px; padding: 10px; background: white;">
+          <!-- Video list will be populated here -->
+        </div>
+      </div>
+      
+      <div style="margin-bottom: 10px;">
+        <label for="videoCount" style="display: block; font-size: 13px; color: #666; margin-bottom: 5px;">
+          Number of videos to download:
+        </label>
+        <input type="number" id="videoCount" min="0" value="0" style="width: 100%; padding: 8px; border: 2px solid #e0e0e0; border-radius: 6px; font-size: 14px;">
+        <div style="font-size: 11px; color: #999; margin-top: 3px;">
+          Will download the first X videos from the list above
+        </div>
+      </div>
+      
+      <div style="margin-bottom: 15px;">
+        <label style="display: block; font-size: 13px; color: #666; margin-bottom: 5px;">
+          📏 Reference Length (Optional):
+        </label>
+        <button class="btn-secondary" id="selectReferenceZip" style="width: 100%;">Select Reference ZIP</button>
+        <div class="status" id="referenceZipStatus" style="display: none; margin-top: 8px;">
+          <div class="status-item">
+            <span class="status-label">Audio Segments:</span>
+            <span class="status-value" id="referenceSegmentCount">0</span>
+          </div>
+        </div>
+        <div style="font-size: 11px; color: #999; margin-top: 3px;">
+          Upload ZIP with audio segments to trim videos to match audio lengths
+        </div>
+      </div>
+      
+      <div style="margin-bottom: 15px;">
+        <label style="display: flex; align-items: center; cursor: pointer;">
+          <input type="checkbox" id="downloadAsZip" checked style="margin-right: 8px;"> 
+          <span style="font-size: 13px; color: #333;">Download as single ZIP file</span>
+        </label>
+        <div style="font-size: 11px; color: #999; margin-top: 3px; margin-left: 24px;">
+          Unchecked = Download as individual MP4 files
+        </div>
+      </div>
+      
+      <div style="margin-bottom: 15px;">
+        <label style="display: flex; align-items: center; cursor: pointer;">
+          <input type="checkbox" id="combineVideos" style="margin-right: 8px;"> 
+          <span style="font-size: 13px; color: #333;">🎬 Combine all videos into one (requires local server)</span>
+        </label>
+        <div style="font-size: 11px; color: #999; margin-top: 3px; margin-left: 24px;">
+          Uses ffmpeg to merge all segments into a single video file
+        </div>
+      </div>
+      
+      <button class="btn-primary" id="startDownload" disabled>📥 Download Videos</button>
+      
+      <div class="status" id="downloadStatus" style="display: none;">
+        <div class="status-item">
+          <span class="status-label">Downloaded:</span>
+          <span class="status-value"><span id="downloadCount">0</span> / <span id="downloadTotal">0</span></span>
+        </div>
+        <div class="progress-bar">
+          <div class="progress-fill" id="downloadProgressFill"></div>
+        </div>
+        <div id="downloadCurrentFile" style="font-size: 12px; color: #666; margin-top: 5px;"></div>
+      </div>
+    </div>
+  </div>
+  
+  <div class="warning" id="warning" style="display: none;"></div>
+  
+  <script src="jszip.min.js"></script>
+  <script src="lame.min.js"></script>
+  <script src="popup.js"></script>
+</body>
+</html>
+
